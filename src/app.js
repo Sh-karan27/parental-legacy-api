@@ -5,13 +5,21 @@ import { errorHandler } from "./middlewares/errorHandler.js";
 
 const app = express();
 
-// Dynamic CORS setup to allow all origins WITH credentials
+// CORS_ORIGIN="*" reflects any origin (dev); otherwise only comma-separated
+// origins in the list are allowed, since credentialed CORS can't use "*".
+const allowedOrigins = (process.env.CORS_ORIGIN || "*")
+  .split(",")
+  .map((o) => o.trim());
+
 const corsOptions = {
   origin: function (origin, callback) {
-    // Allow requests with no origin (like Postman) or from any origin
-    callback(null, origin || true);
+    if (!origin || allowedOrigins.includes("*") || allowedOrigins.includes(origin)) {
+      callback(null, origin || true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
   },
-  credentials: true, // Allow cookies, authorization headers
+  credentials: true,
   optionsSuccessStatus: 200,
 };
 

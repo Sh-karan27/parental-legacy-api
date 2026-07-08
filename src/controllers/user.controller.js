@@ -22,14 +22,6 @@ const genrateAccessAndRefreshToken = async (userId) => {
 };
 
 const registerUser = asyncHandler(async (req, res) => {
-  // get user details form frontend
-  // validation - not empty
-  // check if user already exist: username, email
-  // create user object - create an entry in db
-  // remove password and refresh token field
-  // check for user creation
-  // return res
-
   const {
     username,
     email,
@@ -112,13 +104,6 @@ const registerUser = asyncHandler(async (req, res) => {
 });
 
 const loginUser = asyncHandler(async (req, res) => {
-  // req.body ->
-  // username or email
-  // find the user
-  // password check
-  // access and refresh token
-  // send cookie
-
   const { username, email, password } = req.body;
 
   if (!username && !email) {
@@ -149,6 +134,7 @@ const loginUser = asyncHandler(async (req, res) => {
   const options = {
     httpOnly: true,
     secure: true,
+    sameSite: "none",
   };
 
   return res
@@ -183,6 +169,7 @@ const logoutUser = asyncHandler(async (req, res) => {
   const options = {
     httpOnly: true,
     secure: true,
+    sameSite: "none",
   };
 
   return res
@@ -219,6 +206,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     const options = {
       httpOnly: true,
       secure: true,
+      sameSite: "none",
     };
 
     const { accessToken, refreshToken } = await genrateAccessAndRefreshToken(
