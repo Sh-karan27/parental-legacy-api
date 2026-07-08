@@ -53,7 +53,9 @@ const getAllUsersLegacyStatus = asyncHandler(async (_, res) => {
       parentTwoLabel: user.parentTwoLabel,
       parentTwoName: user.parentTwoName,
       hasGeneratedLegacy,
-      score: analysis?.summary?.grandTotal ?? null,
+      motherTotal: analysis?.summary?.motherTotal ?? null,
+      fatherTotal: analysis?.summary?.fatherTotal ?? null,
+      higherLegacy: analysis?.summary?.higherLegacy ?? null,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };
