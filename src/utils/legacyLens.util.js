@@ -2,73 +2,56 @@ import { FACTORS } from "../constants/factors.constants.js";
 
 export const round2 = (value) => Math.round(value * 100) / 100;
 
-export const generateBirthWeight = (day, month, year) => {
-  const birthSeed = day * month + (year % 100);
-  return (birthSeed % 100) / 100;
-};
+const MIN_SUM = FACTORS.reduce((sum, factor) => sum + factor.min, 0);
+const MAX_SUM = FACTORS.reduce((sum, factor) => sum + factor.max, 0);
+const RANGE_SUM = MAX_SUM - MIN_SUM;
 
-export const calculateFactorScores = (birthWeight) => {
-  return FACTORS.map((factor) => {
-    const difference = factor.max - factor.min;
-    const score = factor.min + difference * birthWeight;
-    return { name: factor.name, score };
-  });
-};
+// The combined fill fraction (mother's + father's) that, applied to every
+// factor's own Min-Max range, makes sum(Mother) + sum(Father) equal exactly
+// 100 while keeping each individual Mother/Father value inside its own
+// factor range.
+const TOTAL_FILL_FRACTION = (100 - 2 * MIN_SUM) / RANGE_SUM;
 
-export const normalizeFactors = (factorScores) => {
-  const factorScoreSum = factorScores.reduce((sum, factor) => sum + factor.score, 0);
-
-  return factorScores.map((factor) => ({
-    name: factor.name,
-    normalized: (factor.score / factorScoreSum) * 100,
-  }));
-};
-
-export const calculateParentShare = (day) => {
+export const calculateFillFractions = (day) => {
   const isMotherDominant = day % 2 !== 0;
+  const half = TOTAL_FILL_FRACTION / 2;
+  // Keep the dominant parent's gap clearly visible (never near a 50/50 tie)
+  // while staying below `half`, so the non-dominant parent's fill never
+  // reaches 0 and every value stays strictly a valid in-range value.
+  const MIN_SPREAD = half * 0.3;
+  const MAX_SPREAD = half * 0.9;
+  const spread = MIN_SPREAD + (day / 31) * (MAX_SPREAD - MIN_SPREAD);
 
-  let motherShare;
-  let fatherShare;
-
-  if (isMotherDominant) {
-    motherShare = 0.55 + (day / 31) * 0.05;
-    fatherShare = 1 - motherShare;
-  } else {
-    fatherShare = 0.55 + (day / 31) * 0.05;
-    motherShare = 1 - fatherShare;
-  }
+  const motherFill = isMotherDominant ? half + spread : half - spread;
+  const fatherFill = TOTAL_FILL_FRACTION - motherFill;
 
   return {
     dominantParent: isMotherDominant ? "Mother" : "Father",
-    motherShare,
-    fatherShare,
+    motherFill,
+    fatherFill,
   };
 };
 
-export const splitFactors = (normalizedFactors, motherShare, fatherShare) => {
-  return normalizedFactors.map((factor) => {
-    const mother = factor.normalized * motherShare;
-    const father = factor.normalized * fatherShare;
+export const calculateFactorValues = (motherFill, fatherFill) => {
+  return FACTORS.map((factor) => {
+    const range = factor.max - factor.min;
+    const mother = factor.min + range * motherFill;
+    const father = factor.min + range * fatherFill;
 
-    return {
-      name: factor.name,
-      mother,
-      father,
-      total: mother + father,
-    };
+    return { name: factor.name, mother, father, total: mother + father };
   });
 };
 
-export const calculateTotals = (splitFactorsList) => {
-  const motherTotal = splitFactorsList.reduce((sum, factor) => sum + factor.mother, 0);
-  const fatherTotal = splitFactorsList.reduce((sum, factor) => sum + factor.father, 0);
+export const calculateTotals = (factorValues) => {
+  const motherTotal = factorValues.reduce((sum, factor) => sum + factor.mother, 0);
+  const fatherTotal = factorValues.reduce((sum, factor) => sum + factor.father, 0);
   const grandTotal = motherTotal + fatherTotal;
 
   return { motherTotal, fatherTotal, grandTotal };
 };
 
-export const prepareCharts = (splitFactorsList, motherTotal, fatherTotal) => {
-  const barChart = splitFactorsList.map((factor) => ({
+export const prepareCharts = (factorValues, motherTotal, fatherTotal) => {
+  const barChart = factorValues.map((factor) => ({
     factor: factor.name,
     mother: round2(factor.mother),
     father: round2(factor.father),
@@ -79,7 +62,7 @@ export const prepareCharts = (splitFactorsList, motherTotal, fatherTotal) => {
     { name: "Father", value: round2(fatherTotal) },
   ];
 
-  const radarChart = splitFactorsList.map((factor) => ({
+  const radarChart = factorValues.map((factor) => ({
     factor: factor.name,
     value: round2(factor.total),
   }));

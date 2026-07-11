@@ -1,10 +1,7 @@
 import {
   round2,
-  generateBirthWeight,
-  calculateFactorScores,
-  normalizeFactors,
-  calculateParentShare,
-  splitFactors,
+  calculateFillFractions,
+  calculateFactorValues,
   calculateTotals,
   prepareCharts,
 } from "../utils/legacyLens.util.js";
@@ -12,30 +9,32 @@ import {
 export const generateLegacyLensAnalysis = (user) => {
   const dob = new Date(user.dob);
   const day = dob.getUTCDate();
-  const month = dob.getUTCMonth() + 1;
-  const year = dob.getUTCFullYear();
 
-  const birthWeight = generateBirthWeight(day, month, year);
+  const { dominantParent, motherFill, fatherFill } = calculateFillFractions(day);
 
-  const factorScores = calculateFactorScores(birthWeight);
-  const normalizedFactors = normalizeFactors(factorScores);
+  const factorValues = calculateFactorValues(motherFill, fatherFill);
 
-  const { dominantParent, motherShare, fatherShare } = calculateParentShare(day);
-
-  const splitFactorsList = splitFactors(normalizedFactors, motherShare, fatherShare);
-
-  const { motherTotal, fatherTotal, grandTotal } = calculateTotals(splitFactorsList);
+  const { motherTotal, fatherTotal, grandTotal } = calculateTotals(factorValues);
 
   const higherLegacy = motherTotal > fatherTotal ? "Mother" : "Father";
 
-  const factors = splitFactorsList.map((factor) => ({
-    name: factor.name,
-    mother: round2(factor.mother),
-    father: round2(factor.father),
-    total: round2(factor.total),
-  }));
+  const factors = factorValues.map((factor) => {
+    const mother = round2(factor.mother);
+    const total = round2(factor.total);
+    // Round father as the remainder of the rounded total so mother + father
+    // always equals total exactly at display precision.
+    const father = round2(total - mother);
 
-  const charts = prepareCharts(splitFactorsList, motherTotal, fatherTotal);
+    return { name: factor.name, mother, father, total };
+  });
+
+  const charts = prepareCharts(factorValues, motherTotal, fatherTotal);
+
+  const roundedGrandTotal = round2(grandTotal);
+  const roundedMotherTotal = round2(motherTotal);
+  // Round fatherTotal as the remainder of the grand total so mother + father
+  // always equals exactly 100 at display precision.
+  const roundedFatherTotal = round2(roundedGrandTotal - roundedMotherTotal);
 
   return {
     user: {
@@ -45,10 +44,9 @@ export const generateLegacyLensAnalysis = (user) => {
       dob: user.dob,
     },
     summary: {
-      birthWeight: round2(birthWeight),
-      motherTotal: round2(motherTotal),
-      fatherTotal: round2(fatherTotal),
-      grandTotal: round2(grandTotal),
+      motherTotal: roundedMotherTotal,
+      fatherTotal: roundedFatherTotal,
+      grandTotal: roundedGrandTotal,
       dominantParent,
       higherLegacy,
     },

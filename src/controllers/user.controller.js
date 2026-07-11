@@ -257,6 +257,34 @@ const getCurrentUser = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, req.user, "Current user fetched succesfully"));
 });
 
+const updateDob = asyncHandler(async (req, res) => {
+  const { dob } = req.body;
+
+  if (!dob) {
+    throw new ApiError(400, "Date of birth is required");
+  }
+
+  const parsedDob = new Date(dob);
+
+  if (isNaN(parsedDob.getTime())) {
+    throw new ApiError(400, "Date of birth is invalid");
+  }
+
+  if (parsedDob.getTime() > Date.now()) {
+    throw new ApiError(400, "Date of birth cannot be in the future");
+  }
+
+  const user = await User.findByIdAndUpdate(
+    req.user._id,
+    { $set: { dob: parsedDob } },
+    { new: true, runValidators: true }
+  ).select("-password -refreshToken");
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, user, "Date of birth updated successfully"));
+});
+
 export {
   registerUser,
   loginUser,
@@ -264,4 +292,5 @@ export {
   refreshAccessToken,
   changeCurrentPassword,
   getCurrentUser,
+  updateDob,
 };
